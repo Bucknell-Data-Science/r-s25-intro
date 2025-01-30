@@ -1,0 +1,86 @@
+---
+title: "Potential Workshop Topics"
+format: pdf
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+```
+
+# Load the data
+
+```{r}
+responses <- read_csv("data/Data Analysis with R Workshop (S25) (Responses) - Form Responses 1.csv") %>%
+  clean_names()
+
+# Create function that converts categorical responses to numbers
+# Very interested = 3
+# Moderately interested = 2
+# Slightly interested = 1
+# Unsure = 0
+# Not at all interested = -1
+num_score <- function(response) {
+    if(is.na(response)){
+    out = 0
+  } else{
+  
+  if(response == "Very interested"){
+    out = 3
+  }
+  if(response == "Moderately interested"){
+    out = 2
+  }
+  if(response == "Slightly interested"){
+    out = 3
+  }
+  if(response == "Not at all interested"){
+    out = -1
+  }
+  if(response == "Unsure"){
+    out = 0
+  }
+  }
+  return(out)
+}
+num_score <- Vectorize(num_score)
+#num_score(NA)
+
+# Test
+num_score(c("Not at all interested", "Slightly interested",
+            NA))
+
+num_score(responses$potential_workshop_topics_data_visualization)
+```
+
+
+```{r}
+# Wrangle data
+overall_interest <- responses %>%
+  mutate(across(everything(), num_score)) %>%
+  summarize(across(everything(), sum)) %>%
+  pivot_longer(cols = everything(), names_to = "topics",
+               values_to = "interest") %>%
+  mutate(topics = str_sub(topics, start = 27)) %>%
+  mutate(topics = str_replace_all(topics, "_", " ")) %>%
+  mutate(cover = case_when(interest >= 71 ~ "Definitely",
+                           interest < 71 & interest >= 56 ~ "Possibly",
+                           interest < 56 ~ "Not this time")) %>%
+  mutate(cover = fct_relevel(cover, 
+                             "Definitely", "Possibly"))
+
+# Graph interests
+ggplot(overall_interest, 
+       mapping = aes(x = fct_reorder(topics, -interest),
+                     y = interest,
+                     fill = cover)) +
+  geom_col() +
+  labs(x = "Potential Topics", y = "Level of Group's Interest",
+       fill = "Should we cover this topic?") +
+  scale_fill_manual(values = c("darkorchid4", "darkorchid" , "orange3")) +
+  theme_gray(base_size = 20) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top")
+ggsave("img/interests.png", dpi = 500) 
+```
+
