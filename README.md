@@ -20,4 +20,4 @@ The schedule was set based on the interests of the group:
 
 These are key and interconnected components of the data analysis workflow:
 
-![](img/DAW.jpeg){ width=20% }
+<img src="img/DAW.jpeg" width="100">
