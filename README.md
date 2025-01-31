@@ -16,3 +16,8 @@ Vote on the schedule by Feb 3rd.  Calendar invites will be sent on the 4th.
 The schedule was set based on the interests of the group:
 
 ![](img/interests.png)
+
+
+These are important topics in the data analysis workflow:
+
+![](img/daw.png)
