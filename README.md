@@ -18,6 +18,6 @@ The schedule was set based on the interests of the group:
 ![](img/interests.png)
 
 
-These are important topics in the data analysis workflow:
+These are key and interconnected components of the data analysis workflow:
 
-![](img/daw.png)
+![](img/DAW.jpeg)
