@@ -1,0 +1,284 @@
+---
+title: "Modeling Data"
+author: "Dominguez Center for Data Science Workshop"
+date: "3-21-2025"
+format: pdf
+execute:
+  warning: false
+  message: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Questions Round-Up
+
+## How do we add a totals row at the bottom of a table?
+
+See the "Wrangling Extra" Project on Posit Cloud for examples.
+
+## Any other questions?
+
+
+# Plan for today
+
+-   Linear regression models in `R`.  Let's look at lots of different examples.  
+-   Remember that you can either fill in the "modeling.qmd" file or follow along with the "modeling_key.qmd" file.
+    - Both documents have code related to topics we covered in previous weeks already filled in.
+
+# Disclaimer
+
+Modeling is a HUGE topic.  We are going to focus more on the how to build models in `R` and less on deciding which model to use and what variables to include.  
+
+I recommend thinking about your modeling goals first and then using your goals to determine the type of model.
+
+## Modeling Goals:
+
+**Descriptive**: Want to estimate quantities related to the population.
+
+Ex: How many trees are in Alaska?
+
+
+**Predictive**: Want to predict the value of a variable.
+
+Ex: Can I use remotely sensed data to predict forest types in Alaska?
+
+
+**Causal**: Want to determine if changes in a variable cause changes in another variable.
+
+Ex: Are insects causing the increased mortality rates for pinyon-juniper woodlands?
+
+Linear regression models are good for descriptive and causal goals.
+
+# Load Packages
+
+```{r}
+# For data wrangling and plotting
+library(tidyverse)
+
+# For diagnostic plots
+library(gglm)
+
+# To add labels to ggplots
+library(ggrepel)
+```
+
+
+# Simple Linear Regression
+
+Consider this model when:
+
+-   Response variable $(y)$: quantitative
+
+-   Explanatory variable $(x)$: quantitative (simple = 1 explanatory variable)
+
+And the relationship between $x$ and $y$ is reasonably approximated by a line:
+
+**Form of the Model:**
+
+$$ 
+y = \beta_o + \beta_1 x + \epsilon
+$$
+
+
+## Data Example:
+
+> "The social contract of Halloween is simple: Provide adequate treats to costumed masses, or be prepared for late-night tricks from those dissatisfied with your offer. To help you avoid that type of vengeance, and to help you make good decisions at the supermarket this weekend, we wanted to figure out what Halloween candy people most prefer. So we devised an experiment: Pit dozens of fun-sized candy varietals against one another, and let the wisdom of the crowd decide which one was best." -- Walt Hickey
+
+> "While we don't know who exactly voted, we do know this: 8,371 different IP addresses voted on about 269,000 randomly generated matchups.2 So, not a scientific survey or anything, but a good sample of what candy people like."
+
+```{r, echo = FALSE, out.width='80%'}
+knitr::include_graphics("img/candy_ex.png")
+```
+
+
+```{r}
+candy <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/candy-power-ranking/candy-data.csv") %>%
+  mutate(pricepercent = pricepercent*100)
+
+
+glimpse(candy)
+```
+
+Does a linear seem reasonable?
+
+```{r}
+# Always graph the data!
+# Let's add the estimated regression line.
+ggplot(data = candy, 
+       mapping = aes(x = pricepercent,
+                     y = winpercent)) +
+  geom_point(alpha = 0.6, size = 4, 
+             color = "chocolate4") +
+  geom_text_repel(aes(label = competitorname), size = 4,
+                  force = 2,
+                  box.padding = 1)
+
+# Can also compute the correlation coefficient
+
+```
+
+
+## Linear Model in `R`
+
+```{r}
+
+```
+
+## Checking Model Assumptions
+
+**Assumptions**:
+
+* Model errors are normally.
+* Observations are independent.
+* Model form is appropriate.
+* The variability in the errors is constant.
+
+**Key term**: residual = $e = y - \hat{y}$
+
+Useful graphs for checking assumptions are the QQ Plot and the Residual Plot.
+
+```{r}
+# QQ Plot - Normality of errors
+
+```
+
+
+```{r}
+# Residual Plot
+
+```
+
+
+## Prediction
+
+Careful: R will let you predict outside the range of your explanatory variable!
+
+```{r}
+new_cases <- data.frame(pricepercent = c(25, 85, 150))
+
+```
+
+# Multiple Linear Regression
+
+We are going to look at different data examples that need different forms of the multiple linear regression model.  We are not going to check model assumptions because the code and interpretation of the output is the same as in the simple linear regression case.
+
+General model form:
+
+$$ 
+y = \beta_o + \beta_1 x_1 + \beta_2 x_2 + \cdots + \beta_p x_p + \epsilon
+$$
+
+## Equal Slopes Model
+
+
+### Data Example
+
+Meadowfoam is a plant that grows in the Pacific Northwest and is harvested for its seed oil. In a randomized experiment, researchers at Oregon State University looked at how two light-related factors influenced the number of flowers per meadowfoam plant, the primary measure of productivity for this plant. The two light measures were light intensity (in mmol/ $m^2$ /sec) and the timing of onset of the light (early or late in terms of photo periodic floral induction).
+
+Let's first load and wrangle the data.
+
+```{r}
+library(tidyverse)
+library(Sleuth3)
+data(case0901)
+
+# Recode the timing variable
+case0901 <- case0901 %>%
+  mutate(TimeCat = case_match(Time,
+                              1 ~ "Late",
+                              2 ~ "Early"
+    )) 
+
+count(case0901, Time, TimeCat)
+```
+
+Next let's visualize the data.
+
+```{r}
+# Let's add the regression curves.
+ggplot(data = case0901,
+       mapping = aes(x = Intensity,
+                     y = Flowers,
+                     color = TimeCat)) + 
+  geom_point(size = 4)
+```
+
+And, then we can fit the model and use it for prediction:
+
+```{r}
+# Fit the model
+
+
+# Predict new values
+flowersNew <- data.frame(Intensity = c(700, 700), TimeCat = c("Early", "Late"))
+flowersNew
+
+
+```
+
+**Question:** Is the assumption of **equal** slopes reasonsable here?
+
+## Different Slopes Model
+
+
+### Data Example
+
+For this example, we will use data collected by the website pollster.com, which aggregated 102 presidential polls from August 29th, 2008 through the end of September. We want to determine the best model to explain the variable `Margin`, measured by the difference in preference between Barack Obama and John McCain. Our potential predictors are `Days` (the number of days after the Democratic Convention) and `Charlie` (indicator variable on whether poll was conducted before or after the first ABC interview of Sarah Palin with Charlie Gibson).
+
+Let's load the data.
+
+```{r}
+library(Stat2Data)
+data("Pollster08")
+glimpse(Pollster08)
+```
+
+And, then visualize the data.
+
+```{r}
+# Let's add the regression curve.
+ggplot(Pollster08,
+       aes(x = Days,
+           y = Margin, 
+           color = Charlie)) +
+  geom_point(size = 3)
+```
+
+
+**Questions**:
+
+* What is wrong with how one of the variables is mapped in the graph?
+* Is the assumption of **equal slopes** reasonable here?
+
+For the different slopes model, we need to include an interaction term.
+
+```{r}
+
+```
+
+## Polynomial Terms
+
+Instead of using the categorical `Charlie` variable, we could also try fitting a parabola.  This also fits under the umbrella of multiple linear regression.  
+
+We can add a parabola to our graph.
+
+```{r}
+# Let's add the regression curve.
+ggplot(Pollster08,
+       aes(x = Days,
+           y = Margin)) +
+  geom_point(size = 3)
+```
+
+
+And, we can add higher order terms to the model.
+
+```{r}
+
+```
+
+
+## Homework
+
+No optional homework this week.  You will receive some practice problems after our next modeling session.
+

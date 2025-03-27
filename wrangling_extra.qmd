@@ -1,0 +1,104 @@
+---
+title: "Wrangling Question: How to Add a Totals Row?"
+author: "Dominguez Center for Data Science Workshop"
+date: "3-21-2025"
+format: pdf
+execute:
+  warning: false
+  message: false
+editor_options: 
+  chunk_output_type: console
+---
+
+
+# Load Packages
+
+
+
+```{r}
+library(tidyverse)
+```
+
+
+# Load the Data
+
+Run the following code to load the data.
+
+```{r}
+# Load the data
+colleges <- read_csv("data/ccbasic21.csv") 
+
+```
+
+
+# Question: How do I add a line at the bottom of a table that includes the values for all observations?
+
+* For each of the Mid-Atlantic states, let's produce a table that contains the average admission rate and number of schools.  
+* Then let's add a row with the average admissions rate for all of the schools in the Mid-Atlantic.
+
+```{r}
+by_school <- colleges %>%
+  filter(STABBR %in% c("PA", "NJ", "VA", "MD", "DE", "WV", "DC")) %>%
+  drop_na(ADM_RATE) %>%
+  group_by(STABBR) %>%
+  summarize(avg_admit = mean(ADM_RATE), count = n()) %>%
+  arrange(avg_admit)
+
+mid_atlantic <- colleges %>%
+  filter(STABBR %in% c("PA", "NJ", "VA", "MD", "DE", "WV", "DC")) %>%
+  drop_na(ADM_RATE) %>%
+  summarize(avg_admit = mean(ADM_RATE), count = n()) %>%
+  mutate(STABBR = "All") %>%
+  relocate(STABBR)
+
+combined_table <- by_school %>%
+  bind_rows(mid_atlantic)
+```
+
+# Extras
+
+## Question: How do I export as a csv so that I can open it in Excel (or Google Sheets) and make it prettier?
+
+Run the following code:
+
+```{r}
+write_csv(combined_table, "data/avg_admit_table.csv")
+```
+
+
+Then within the Files pane in the lower right:
+
+* Click on the "data" folder.
+* Check the box next to "avg_admit_table.csv"
+* Go to More and select "Export".  This will also you to download the file to your computer.
+
+## Question: Can I make the table look nicer within `R`?
+
+Yes!  Here's an example.
+
+```{r}
+library(kableExtra)
+kable(combined_table,
+             format = "latex",
+             booktabs = TRUE, longtable = TRUE, 
+             digits = 2,
+      col.names = c("State", "Average Admissions Rate", "Number of Schools"))
+
+```
+
+```{r}
+library(gt)
+combined_table %>%
+  gt() %>%
+  data_color(columns = avg_admit, method = "numeric",
+             palette = "viridis", reverse = TRUE) %>%
+  tab_header(title = "Average Admission Rates for Mid-Atlantic Schools",
+             subtitle = "Data from College Scorecard") %>%
+  tab_source_note(
+    source_note = "Focused on schools with a Basic Carnegie Classification of 'Confers majority Baccalaureate degrees with arts and sciences focus'"
+  ) %>%
+  fmt_number(columns = avg_admit, decimals = 2) %>%
+  cols_label(STABBR = md("**State**"), avg_admit = md("**Average Admission Rate**"),
+             count = md("**Number of Schools**"))
+```
+
