@@ -1,0 +1,235 @@
+---
+title: "More Models"
+author: "Dominguez Center for Data Science Workshop"
+date: "4-16-2025"
+format: pdf
+execute:
+  warning: false
+  message: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Load packages
+
+```{r}
+# For data wrangling and plotting
+library(tidyverse)
+
+# For loading the meadowfoam dataset
+library(Sleuth3)
+
+# For fitting classification trees
+library(rpart)
+
+# For creating charts of trees
+library(rpart.plot)
+```
+
+
+
+# Plan for today
+
+-   Cover lingering questions.
+-   Introduce a few more models:
+    - Logistic regression
+    - Classification trees
+-   Remember that you can either fill in the "more_modeling.qmd" file or follow along with the "more_modeling_key.qmd" file.
+    - Both documents have code related to topics we covered in previous weeks already filled in.
+
+
+# Questions Round-Up
+
+## But what does all of the output of `summary()` mean?
+
+Let's return to the Meadowfoam flowers example from last time and build a model to predict the number of flowers on a plant based on the timing and intensity of the lighting.
+
+In the code below, I fit two models: one with an interaction term and one without.  Let's explore and interpret the `summary()` output.
+
+```{r}
+# Load the data
+data(case0901)
+
+# Recode the timing variable
+case0901 <- case0901 %>%
+  mutate(TimeCat = case_match(Time,
+                              1 ~ "Late",
+                              2 ~ "Early"
+    ))
+
+# Visualize the data
+ggplot(data = case0901,
+       mapping = aes(x = Intensity,
+                     y = Flowers,
+                     color = TimeCat)) + 
+  geom_point(size = 4) + 
+  geom_smooth(method = lm, se = FALSE)
+
+# Build a model without an interaction term
+modFlowers <- lm(Flowers ~ Intensity + TimeCat, data = case0901)
+summary(modFlowers)
+
+# Build a model with an interaction term
+modFlowers_interact <- lm(Flowers ~ Intensity * TimeCat, data = case0901)
+summary(modFlowers_interact)
+```
+
+
+## And, how do I start using a local installation of RStudio?
+
+* First download all of your projects from Posit as I will delete the workspace at the end of May.
+* You can find directions [here](https://posit.co/download/rstudio-desktop/) for downloading a local installation of RStudio.  
+* Bring any questions or issues with the transition to my `R` office hours on May 14th 1-3pm.
+
+## Any other questions?
+
+
+# Logistic Regression
+
+Consider this model when:
+
+-   Response variable $(y)$: categorical (binary)
+
+-   Explanatory variable $(x)$: quantitative and/or categorical
+
+
+## Come back to this data example:
+
+> "The social contract of Halloween is simple: Provide adequate treats to costumed masses, or be prepared for late-night tricks from those dissatisfied with your offer. To help you avoid that type of vengeance, and to help you make good decisions at the supermarket this weekend, we wanted to figure out what Halloween candy people most prefer. So we devised an experiment: Pit dozens of fun-sized candy varietals against one another, and let the wisdom of the crowd decide which one was best." -- Walt Hickey
+
+> "While we don't know who exactly voted, we do know this: 8,371 different IP addresses voted on about 269,000 randomly generated matchups.2 So, not a scientific survey or anything, but a good sample of what candy people like."
+
+```{r, echo = FALSE, out.width='80%'}
+knitr::include_graphics("img/candy_ex.png")
+```
+
+
+```{r}
+# Load the data
+candy <- read_csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/candy-power-ranking/candy-data.csv") %>%
+  mutate(pricepercent = pricepercent*100)
+
+# Look at the variables
+glimpse(candy)
+```
+
+**Question of interest:** Does this candy have chocolate in it??
+
+**Follow-up question:** Which variables in our dataset do you think would be good predictors of whether or not a candy will have chocolate in it?
+
+## Visualize the relationships between the variables
+
+```{r}
+# Potential graphs
+ggplot(data = candy, mapping = aes(x = as.factor(hard),
+                                   fill = as.factor(chocolate))) +
+  geom_bar(position = "fill")
+ggplot(data = candy, mapping = aes(x = as.factor(fruity), 
+                                   fill = as.factor(chocolate))) +
+  geom_bar(position = "fill")
+
+ggplot(data = candy, mapping = aes(x = winpercent,
+                                   y = chocolate, 
+                                   color = as.factor(fruity))) +
+  geom_jitter(width = 0, height = 0.1) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),
+              se = FALSE)
+```
+
+## Build a logistic regression model
+
+```{r}
+# Linear model
+mod_lin <- lm(chocolate ~ as.factor(fruity) + winpercent, data = candy)
+summary(mod_lin)
+
+# Logistic model
+mod_log <- glm(chocolate ~ as.factor(fruity) + winpercent, data = candy,
+               family = "binomial")
+summary(mod_log)
+```
+
+
+## Prediction
+
+You can use the `predict()` function in the same way as we did for linear regression.
+
+```{r}
+new_cases <- data.frame(fruity = 0, winpercent = 50)
+predict(mod_log, newdata = new_cases, type = "response")
+```
+
+# Classification Trees
+
+Consider this model when:
+
+-   Response variable $(y)$: categorical
+
+-   Explanatory variable $(x)$: quantitative and/or categorical
+
+This is a more flexible model fit than logistic regression.
+
+```{r}
+# Fit the model
+tree <- rpart(chocolate ~ . - competitorname, data = candy, method = "class")
+tree
+
+rpart.plot(tree)
+```
+
+Which model is better: the logistic regression model or the classification tree?
+
+Three metrics:
+
+* Accuracy: Proportion of the guesses were correct
+* Sensitivity: Among the chocolate candies, proportion of times that the model identified the candy has chocolate
+* Specificity: Among the non-chocolate candies, proportion of times that the model identified the candy doesn't have chocolate
+
+Let's draw a confusion matrix on the board.
+
+```{r}
+# How do we access the predictions?
+mod_log$fitted.values
+predict(tree, type = "class")
+
+# Add predictions
+candy <- candy %>%
+  mutate(log_model_guess = if_else(mod_log$fitted.values >= 0.5, 1, 0),
+         tree_model_guess = predict(tree, type = "class"))
+
+# Confusion matrix
+count(candy, chocolate, log_model_guess)
+count(candy, chocolate, tree_model_guess)
+
+# Accuracy
+mean(candy$chocolate == candy$log_model_guess)
+mean(candy$chocolate == candy$tree_model_guess)
+
+# Sensitivity: Prob can identify that a candy has chocolate among the chocolate candies
+candy %>%
+  filter(chocolate == 1) %>%
+  summarize(mean(log_model_guess == 1), mean(tree_model_guess == 1))
+
+# Specificity: Prob can identify that a candy doesn't have chocolate among candies without chocolate
+candy %>%
+  filter(chocolate == 0) %>%
+  summarize(mean(log_model_guess == 0), mean(tree_model_guess == 0))
+```
+
+## Resources related to modeling
+
+We have just scratched the surface of building and interpreting models in `R`.  Here are some additional resources on modeling:
+
+* Chapters 5, 6, and 10 of [ModernDive](https://moderndive.com/v2/regression.html)
+* For a more machine learning approach, check out [Tidy Modeling with R](https://www.tmwr.org/) or [Introduction to Statistical Learning in R](https://www.statlearning.com/)
+* For more advanced modeling, check out [Beyond Multiple Linear Regression](https://bookdown.org/roback/bookdown-BeyondMLR/)
+* For bayesian model, check out [Bayes Rules!](https://www.bayesrulesbook.com/)
+
+
+## Homework
+
+* Download materials from Posit Cloud.
+* Go back over all the materials we have covered and try to apply to your own work.
+* Bring questions and ideas to my `R` office hours on May 14th 1-3pm.
+
